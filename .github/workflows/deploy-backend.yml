@@ -1,0 +1,35 @@
+name: Deploy backend to Azure App Service (Windows)
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Use Node 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+
+      - name: Install backend deps
+        working-directory: ./backend
+        run: npm ci
+
+      # (Optional) quick sanity test it starts locally
+      # - name: Build or test (optional)
+      #   working-directory: ./backend
+      #   run: npm run test --if-present
+
+      - name: Deploy to Azure Web App (Windows)
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'SoCo'                              # <-- your App Service name
+          slot-name: 'production'
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
+          package: ./backend                            # <-- deploy ONLY backend as the site root
