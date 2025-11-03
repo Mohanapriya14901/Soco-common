@@ -1,35 +1,37 @@
-name: Deploy backend to Azure App Service (Windows)
+name: Build and Deploy Node.js App to Azure - SoCo
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
-
+    runs-on: windows-latest  # (use windows to match your web.config; linux also works without web.config)
+    env:
+      WEBAPP_NAME: soco-crawf2dfdrg4dpfn   # <- EXACT Azure app name (the part before .azurewebsites.net)
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node 18
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18.x'
+          node-version: '20'
 
-      - name: Install backend deps
-        working-directory: ./backend
-        run: npm ci
+      - name: Install backend deps (production only)
+        working-directory: backend
+        run: |
+          npm ci --omit=dev
 
-      # (Optional) quick sanity test it starts locally
-      # - name: Build or test (optional)
-      #   working-directory: ./backend
-      #   run: npm run test --if-present
+      - name: Zip backend folder
+        shell: pwsh
+        run: |
+          Remove-Item -Force -ErrorAction SilentlyContinue backend.zip
+          Compress-Archive -Path backend\* -DestinationPath backend.zip
 
-      - name: Deploy to Azure Web App (Windows)
-        uses: azure/webapps-deploy@v3
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
         with:
-          app-name: 'SoCo'                              # <-- your App Service name
-          slot-name: 'production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
-          package: ./backend                            # <-- deploy ONLY backend as the site root
+          app-name: ${{ env.WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: backend.zip
